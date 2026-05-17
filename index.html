@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>狂気の「無限・煎餅割り」</title>
+    <style>
+        /* 全体の見た目 */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4ecd8; /* どこか和風な背景色 */
+            color: #333;
+            text-align: center;
+            padding: 30px 10px;
+            margin: 0;
+            user-select: none; /* 文字が選択されて青くなるのを防ぐ */
+        }
+
+        .container {
+            max-width: 450px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 4px solid #8b4513;
+            position: relative;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #8b4513;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* スコア表示 */
+        .score-board {
+            font-size: 20px;
+            font-weight: bold;
+            color: #d2691e;
+            background: #fff8ee;
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px dashed #d2691e;
+            margin-bottom: 20px;
+        }
+
+        /* 煎餅の種類（テキスト案内） */
+        #senbei-type {
+            font-weight: bold;
+            font-size: 16px;
+            height: 24px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        /* 煎餅を置くエリア */
+        .stage {
+            height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 煎餅本体の見た目 */
+        .senbei {
+            width: 160px;
+            height: 160px;
+            background-color: #deb887; /* 基本は醤油煎餅の色 */
+            border-radius: 50%;
+            border: 6px solid #b8860b;
+            box-shadow: 0 8px 0 #8b4513, inset 0 0 20px rgba(139,69,19,0.3);
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.05s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 煎餅の模様（のり等） */
+        .senbei::after {
+            content: '';
+            position: absolute;
+            width: 70px;
+            height: 50px;
+            background-color: #2f4f4f; /* のり */
+            border-radius: 5px;
+            transform: rotate(-15deg);
+        }
+
+        /* クリックした瞬間にちょっと縮む */
+        .senbei:active {
+            transform: scale(0.92) translateY(5px);
+            box-shadow: 0 3px 0 #8b4513, inset 0 0 20px rgba(139,69,19,0.3);
+        }
+
+        /* 飛び散る文字エフェクト（擬音） */
+        .effect-text {
+            position: absolute;
+            font-weight: 900;
+            font-size: 28px;
+            color: #e64a19;
+            pointer-events: none; /* クリックの邪魔をしない */
+            animation: flyUp 0.4s ease-out forwards;
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        @keyframes flyUp {
+            0% { transform: translate(0, 0) scale(0.5); opacity: 1; }
+            100% { transform: translate(var(--x), var(--y)) scale(1.3) rotate(var(--r)); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🫓 無限・煎餅割り</h1>
+        <div class="subtitle">〜 職人の朝は、ただ叩き割ることから始まる 〜</div>
+
+        <!-- スコア -->
+        <div class="score-board">
+            割った枚数: <span id="score">0</span> 枚
+        </div>
+
+        <!-- 今の煎餅の種類 -->
+        <div id="senbei-type">普通のしょうゆ煎餅</div>
+
+        <!-- ゲーム画面 -->
+        <div class="stage">
+            <div id="main-senbei" class="senbei" onclick="tapSenbei(event)"></div>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let currentHp = 1; // 煎餅を割るのに必要なクリック数
+        let currentType = "normal"; // 煎餅のタイプ
+
+        const senbeiElement = document.getElementById("main-senbei");
+        const scoreElement = document.getElementById("score");
+        const typeElement = document.getElementById("senbei-type");
+        const stageElement = document.querySelector(".stage");
+
+        // 擬音リスト
+        const sounds = ["パリッ！", "バリィィン！", "ボキッ！", "バリサクッ", "パキッ！"];
+
+        // 煎餅を叩いたときの処理
+        function tapSenbei(event) {
+            currentHp--;
+
+            // 飛び散る文字（擬音）を出す
+            createEffect(event);
+
+            // 煎餅のHPが0になったら（割れたら）
+            if (currentHp <= 0) {
+                // スコア加算
+                if (currentType === "gold") {
+                    score += 5; // 金は5枚分
+                } else {
+                    score += 1;
+                }
+                scoreElement.innerText = score;
+
+                // 次の煎餅を召喚
+                spawnSenbei();
+            }
+        }
+
+        // 新しい煎餅をランダムで決める
+        function spawnSenbei() {
+            const rand = Math.random() * 100;
+
+            if (rand < 15) {
+                // 15%の確率で「頑固おやじのげんこつ煎餅」（硬い）
+                currentType = "hard";
+                currentHp = 5; // 5回叩かないと割れない
+                typeElement.innerText = "🧱 頑固おやじのげんこつ煎餅（硬い！あと5回）";
+                typeElement.style.color = "#8b4513";
+                senbeiElement.style.backgroundColor = "#5c3a21"; // 焦げ茶色
+                senbeiElement.style.border = "6px solid #3e2714";
+            } else if (rand < 25) {
+                // 10%の確率で「激レア・金箔せんべい」（ボーナス）
+                currentType = "gold";
+                currentHp = 1;
+                typeElement.innerText = "✨ 激レア・金箔せんべい（スコア＋5！）";
+                typeElement.style.color = "#d4af37";
+                senbeiElement.style.backgroundColor = "#ffd700"; // 金色
+                senbeiElement.style.border = "6px solid #b8860b";
+            } else {
+                // 通常の煎餅
+                currentType = "normal";
+                currentHp = 1;
+                typeElement.innerText = "🍘 普通のしょうゆ煎餅";
+                typeElement.style.color = "#555";
+                senbeiElement.style.backgroundColor = "#deb887"; // 薄茶色
+                senbeiElement.style.border = "6px solid #b8860b";
+            }
+        }
+
+        // 文字エフェクトを生成する関数
+        function createEffect(event) {
+            const text = document.createElement("div");
+            text.classList.add("effect-text");
+            
+            // 叩いた煎餅の種類によって文字を変える
+            if (currentHp > 0) {
+                text.innerText = "コッ！"; // 硬くて割れないとき
+                text.style.color = "#777";
+            } else if (currentType === "gold") {
+                text.innerText = "ゴォォォンジ！💰";
+                text.style.color = "#ffd700";
+            } else {
+                // ランダムに擬音を選ぶ
+                text.innerText = sounds[Math.floor(Math.random() * sounds.length)];
+                text.style.color = "#e64a19";
+            }
+
+            // クリックした位置の近くにエフェクトを配置
+            const rect = stageElement.getBoundingClientRect();
+            const x = event.clientX - rect.left - 40;
+            const y = event.clientY - rect.top - 20;
+            text.style.left = `${x}px`;
+            text.style.top = `${y}px`;
+
+            // 飛び散る方向をランダムに設定（CSSの変数に渡す）
+            const moveX = (Math.random() - 0.5) * 200; // 左右に散る
+            const moveY = -Math.random() * 100 - 50;   // 上に跳ね上がる
+            const rotate = (Math.random() - 0.5) * 60;  // 回転
+
+            text.style.setProperty('--x', `${moveX}px`);
+            text.style.setProperty('--y', `${moveY}px`);
+            text.style.setProperty('--r', `${rotate}deg`);
+
+            stageElement.appendChild(text);
+
+            // アニメーションが終わったら消す
+            setTimeout(() => {
+                text.remove();
+            }, 400);
+        }
+    </script>
+
+</body>
+</html>
